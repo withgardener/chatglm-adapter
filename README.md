@@ -34,6 +34,8 @@ pytest
 uvicorn chatglm_adapter.main:app --reload
 ```
 
+完整 Docker + NewAPI 安装步骤见 [`docs/INSTALL.md`](docs/INSTALL.md)。
+
 本地调用时需要发送：
 
 ```text
