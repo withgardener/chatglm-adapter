@@ -1,0 +1,14 @@
+.git
+.env
+secrets/
+data/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest-tmp/
+tests/fixtures/har/
+tests/fixtures/sse/
+dist/
+build/
+*.egg-info/

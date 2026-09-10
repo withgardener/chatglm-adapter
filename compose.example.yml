@@ -1,0 +1,33 @@
+services:
+  chatglm-adapter:
+    build: .
+    image: chatglm-adapter:0.1.0
+    expose:
+      - "8000"
+    environment:
+      ADAPTER_INTERNAL_API_KEY: ${ADAPTER_INTERNAL_API_KEY:?set ADAPTER_INTERNAL_API_KEY}
+      CHATGLM_REFRESH_TOKEN_FILE: /run/secrets/chatglm_refresh_token
+      CHATGLM_DEVICE_ID_FILE: /data/device-id
+      CHATGLM_STREAM_URL: https://chatglm.cn/chatglm/backend-api/assistant/stream
+      CHATGLM_SIGN_SECRET: ${CHATGLM_SIGN_SECRET:?set the verified sign secret}
+      CHATGLM_TIMESTAMP_FORMAT: ${CHATGLM_TIMESTAMP_FORMAT:-unix_ms}
+      CHATGLM_AUTH_REFRESH_URL: ${CHATGLM_AUTH_REFRESH_URL:?set the verified refresh endpoint}
+      CHATGLM_CONVERSATION_CREATE_URL: ${CHATGLM_CONVERSATION_CREATE_URL:?set the verified create endpoint}
+      CHATGLM_CONVERSATION_DELETE_URL: ${CHATGLM_CONVERSATION_DELETE_URL:-}
+    volumes:
+      - chatglm-adapter-data:/data
+    secrets:
+      - chatglm_refresh_token
+    networks:
+      - ai-backend
+
+secrets:
+  chatglm_refresh_token:
+    file: ./secrets/chatglm_refresh_token
+
+volumes:
+  chatglm-adapter-data:
+
+networks:
+  ai-backend:
+    external: true
