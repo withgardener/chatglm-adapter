@@ -22,3 +22,12 @@ def test_unknown_event_is_explicit_and_does_not_keep_text():
     assert isinstance(result[0], Unknown)
     assert result[0].payload_shape == {"new_field": "string"}
 
+
+def test_normalize_current_chatglm_parts_and_finish_status():
+    raw = RawSSEEvent(
+        None,
+        '{"status":"finish","conversation_id":"conv-1",'
+        '"parts":[{"answer_type":"think","text":"先想"},'
+        '{"answer_type":"text","text":"答案","status":"finish"}]}',
+    )
+    assert normalize(raw) == [ReasoningDelta("先想"), TextDelta("答案"), Finish()]

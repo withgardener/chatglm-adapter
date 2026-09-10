@@ -10,6 +10,8 @@ import httpx
 from ..config import Settings
 from ..core.errors import AuthenticationError, ConfigurationError, UpstreamError
 from ..security.secrets import atomic_write_secret, read_secret_file
+from .headers import build_headers
+from .signer import ChatGLMSigner
 
 
 @dataclass
@@ -32,9 +34,17 @@ def _jwt_expiry(token: str) -> float | None:
 
 
 class AuthManager:
-    def __init__(self, settings: Settings, client: httpx.AsyncClient):
+    def __init__(
+        self,
+        settings: Settings,
+        client: httpx.AsyncClient,
+        signer: ChatGLMSigner,
+        device_id: str,
+    ):
         self._settings = settings
         self._client = client
+        self._signer = signer
+        self._device_id = device_id
         self._cache: _TokenCache | None = None
         self._lock = asyncio.Lock()
 
@@ -64,8 +74,17 @@ class AuthManager:
         if not url:
             raise ConfigurationError("CHATGLM_AUTH_REFRESH_URL is not configured")
         refresh_token = read_secret_file(self._settings.chatglm_refresh_token_file)
+        await self._signer.sync(self._client, self._settings.chatglm_time_sync_url)
+        headers = build_headers(
+            self._settings,
+            self._signer,
+            access_token=refresh_token,
+            device_id=self._device_id,
+            accept="application/json",
+            content_type="application/json;charset=utf-8",
+        )
         try:
-            response = await self._client.post(url, json={"refresh_token": refresh_token})
+            response = await self._client.post(url, headers=headers, json={})
         except httpx.HTTPError as exc:
             raise UpstreamError("ChatGLM token refresh request failed", retryable=True) from exc
         if response.status_code >= 400:

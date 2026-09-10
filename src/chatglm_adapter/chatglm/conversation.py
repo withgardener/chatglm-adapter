@@ -17,7 +17,9 @@ class ConversationManager:
 
     async def create(self, headers: dict[str, str]) -> ChatGLMConversation:
         if not self._settings.chatglm_conversation_create_url:
-            raise ConfigurationError("CHATGLM_CONVERSATION_CREATE_URL is not configured")
+            # The current web client sends an empty id and lets the stream endpoint
+            # allocate the temporary conversation.
+            return ChatGLMConversation(conversation_id="")
         try:
             response = await self._client.post(
                 self._settings.chatglm_conversation_create_url,
@@ -42,11 +44,10 @@ class ConversationManager:
         return ChatGLMConversation(conversation_id=conversation_id)
 
     async def cleanup(self, conversation: ChatGLMConversation, headers: dict[str, str]) -> None:
-        if not self._settings.chatglm_conversation_delete_url:
+        if not self._settings.chatglm_conversation_delete_url or not conversation.conversation_id:
             return
         try:
-            await self._client.request(
-                "DELETE",
+            await self._client.post(
                 self._settings.chatglm_conversation_delete_url,
                 headers=headers,
                 json={"conversation_id": conversation.conversation_id},

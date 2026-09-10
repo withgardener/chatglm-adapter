@@ -19,7 +19,6 @@ class Container:
     def __init__(self, settings: Settings, http_client: httpx.AsyncClient):
         self.settings = settings
         self.http = http_client
-        self.auth = AuthManager(settings, http_client)
         self.gate = UpstreamGate(
             settings.upstream_max_concurrency,
             settings.queue_max_wait_seconds,
@@ -29,6 +28,7 @@ class Container:
             settings.chatglm_sign_secret,
             TimestampProvider(settings.chatglm_timestamp_format),
         )
+        self.auth = AuthManager(settings, http_client, self.signer, self.device_id)
         conversations = ConversationManager(settings, http_client)
         self.chatglm = ChatGLMClient(
             settings,
@@ -52,4 +52,3 @@ app = FastAPI(title="chatglm-adapter", version=get_settings().version, lifespan=
 app.include_router(health_router)
 app.include_router(models_router)
 app.include_router(chat_router)
-

@@ -19,25 +19,27 @@ async def test_client_creates_streams_and_cleans_temporary_conversation(tmp_path
 
     def handler(request: httpx.Request):
         calls.append(request.url.path)
+        if request.url.path == "/cur_ts":
+            return httpx.Response(200, json={"result": {"timestamp_ms": 1700000000000}})
         if request.url.path == "/refresh":
             return httpx.Response(200, json={"access_token": "access"})
-        if request.url.path == "/conversation":
-            return httpx.Response(200, json={"conversation_id": "conversation-1"})
         if request.url.path == "/stream":
             return httpx.Response(
                 200,
                 headers={"content-type": "text/event-stream"},
-                content=b'data: {"content":"ok"}\n\ndata: [DONE]\n\n',
+                content=b'data: {"status":"init","conversation_id":"conversation-1","parts":[]}\n\n'
+                b'data: {"content":"ok"}\n\ndata: [DONE]\n\n',
             )
-        if request.url.path == "/conversation-1":
+        if request.url.path == "/conversation/delete":
+            assert request.read() == b'{"conversation_id":"conversation-1"}'
             return httpx.Response(204, request=request)
         raise AssertionError(request.url.path)
 
     settings = Settings(
         chatglm_stream_url="https://chatglm.test/stream",
         chatglm_auth_refresh_url="https://chatglm.test/refresh",
-        chatglm_conversation_create_url="https://chatglm.test/conversation",
-        chatglm_conversation_delete_url="https://chatglm.test/conversation-1",
+        chatglm_time_sync_url="https://chatglm.test/cur_ts",
+        chatglm_conversation_delete_url="https://chatglm.test/conversation/delete",
         chatglm_sign_secret="secret",
         chatglm_refresh_token_file=refresh_file,
         auth_refresh_skew_seconds=0,
@@ -47,8 +49,8 @@ async def test_client_creates_streams_and_cleans_temporary_conversation(tmp_path
         messages=[{"role": "user", "content": "hello"}],
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        auth = AuthManager(settings, http)
         signer = ChatGLMSigner("secret", TimestampProvider("unix_ms"))
+        auth = AuthManager(settings, http, signer, "0" * 32)
         client = ChatGLMClient(
             settings,
             http,
@@ -65,5 +67,9 @@ async def test_client_creates_streams_and_cleans_temporary_conversation(tmp_path
                 request_id="request-1",
             )
         ]
-    assert [event.data for event in events] == ['{"content":"ok"}', "[DONE]"]
-    assert calls == ["/refresh", "/conversation", "/stream", "/conversation-1"]
+    assert [event.data for event in events] == [
+        '{"status":"init","conversation_id":"conversation-1","parts":[]}',
+        '{"content":"ok"}',
+        "[DONE]",
+    ]
+    assert calls == ["/cur_ts", "/refresh", "/stream", "/conversation/delete"]

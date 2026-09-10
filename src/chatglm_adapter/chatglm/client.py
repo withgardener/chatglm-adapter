@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
+import json
 
 import httpx
 
@@ -9,6 +10,7 @@ from ..core.retry import StreamState
 from .auth import AuthManager
 from .conversation import ConversationManager
 from .headers import build_headers
+from .models import ChatGLMConversation
 from .request_builder import ChatGLMRequestBuilder
 from .signer import ChatGLMSigner
 from .sse_parser import RawSSEEvent, decode_stream
@@ -75,6 +77,9 @@ class ChatGLMClient:
                             retryable=(response.status_code in {500, 502, 503, 504} and not state.started),
                         )
                     async for event in decode_stream(response.aiter_text()):
+                        conversation_id = _conversation_id(event)
+                        if conversation_id:
+                            conversation = ChatGLMConversation(conversation_id)
                         state.mark_emitted()
                         yield event
                     return
@@ -92,3 +97,15 @@ class ChatGLMClient:
                 if conversation is not None:
                     await self._conversations.cleanup(conversation, base_headers)
         raise UpstreamError("ChatGLM stream retry budget exhausted")
+
+
+def _conversation_id(event: RawSSEEvent) -> str | None:
+    try:
+        payload = json.loads(event.data)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(payload, dict):
+        value = payload.get("conversation_id")
+        if isinstance(value, str) and value:
+            return value
+    return None

@@ -85,13 +85,23 @@ def normalize(raw: RawSSEEvent) -> list[NormalizedEvent]:
         return [Unknown(event=raw.event, payload_shape=_shape(payload))]
 
     event_name = (raw.event or "").lower()
-    if "error" in event_name or _has_key(payload, "error"):
+    status = str(payload.get("status", "")).lower() if isinstance(payload, dict) else ""
+    if "error" in event_name or status in {"error", "failed"} or _has_key(payload, "error"):
         message = _first_string(payload, ("message", "error", "msg")) or "upstream error"
         return [Error(message=message)]
     if "search" in event_name or _has_key(payload, "search_results"):
         return [SearchEvent(payload=_as_dict(payload))]
     if "tool" in event_name or _has_key(payload, "tool_calls"):
         return [ToolEvent(payload=_as_dict(payload))]
+
+    if isinstance(payload, dict) and isinstance(payload.get("parts"), list):
+        result: list[NormalizedEvent] = []
+        for part in payload["parts"]:
+            result.extend(_normalize_part(part))
+        if status == "finish" and not any(isinstance(event, Finish) for event in result):
+            result.append(Finish())
+        if result:
+            return result
 
     result: list[NormalizedEvent] = []
     reasoning = _first_string(payload, ("reasoning_content", "reasoning", "thinking"))
@@ -111,6 +121,37 @@ def normalize(raw: RawSSEEvent) -> list[NormalizedEvent]:
     if event_name in {"done", "finish", "completed", "complete"}:
         return [Finish()]
     return [Unknown(event=raw.event, payload_shape=_shape(payload))]
+
+
+def _normalize_part(part: object) -> list[NormalizedEvent]:
+    if not isinstance(part, dict):
+        return [Unknown(event=None, payload_shape=_shape(part))]
+
+    answer_type = str(
+        part.get("answer_type")
+        or part.get("type")
+        or (part.get("meta_data") or {}).get("answer_type", "")
+    ).lower()
+    if answer_type in {"browser_result", "quote_result", "search", "search_result"}:
+        return [SearchEvent(payload=part)]
+    if answer_type in {"tool_calls", "tool_call", "function_call", "function_result", "tool_result"}:
+        return [ToolEvent(payload=part)]
+    if answer_type in {"think", "thinking", "reasoning", "advanced_thinking"}:
+        text = _first_string(part, ("text", "content", "reasoning_content"))
+        return [ReasoningDelta(text)] if text else _finish_for_part(part)
+
+    text = _first_string(part, ("text", "content", "answer"))
+    result: list[NormalizedEvent] = [TextDelta(text)] if text else []
+    if str(part.get("status", "")).lower() in {"finish", "finished", "done", "completed"}:
+        result.append(Finish())
+    return result or _finish_for_part(part)
+
+
+def _finish_for_part(part: dict[str, Any]) -> list[NormalizedEvent]:
+    status = str(part.get("status", "")).lower()
+    if status in {"finish", "finished", "done", "completed"}:
+        return [Finish()]
+    return []
 
 
 def _as_dict(payload: object) -> dict[str, Any]:
@@ -180,4 +221,3 @@ def _shape(value: object) -> object:
     if value is None:
         return "null"
     return type(value).__name__
-

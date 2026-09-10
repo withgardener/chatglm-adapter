@@ -12,8 +12,8 @@ def test_request_builder_maps_messages_and_search():
         web_search=True,
     )
     body = ChatGLMRequestBuilder("glm-5.3-flash").build(request, "conv").body
+    assert body["assistant_id"] == "65940acff94777010aa6b796"
     assert body["conversation_id"] == "conv"
     assert body["meta_data"]["selected_model"] == "glm-5.3-flash"
     assert body["meta_data"]["is_networking"] is True
     assert body["messages"][0]["content"] == [{"type": "text", "text": "be concise"}]
-

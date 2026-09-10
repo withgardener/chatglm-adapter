@@ -20,11 +20,17 @@ class Settings(BaseSettings):
     strict_parameters: bool = False
 
     chatglm_stream_url: str = "https://chatglm.cn/chatglm/backend-api/assistant/stream"
-    chatglm_auth_refresh_url: str = ""
+    chatglm_auth_refresh_url: str = "https://chatglm.cn/chatglm/user-api/user/refresh"
     chatglm_conversation_create_url: str = ""
-    chatglm_conversation_delete_url: str = ""
+    chatglm_conversation_delete_url: str = "https://chatglm.cn/chatglm/mainchat-api/conversation/delete"
+    chatglm_time_sync_url: str = "https://chatglm.cn/chatglm/operation-api/config/cur_ts"
+    chatglm_assistant_id: str = "65940acff94777010aa6b796"
+    chatglm_app_fr: str = ""
+    chatglm_exp_groups: str = ""
+    chatglm_device_model: str = ""
+    chatglm_device_brand: str = ""
     chatglm_sign_secret: str = Field(default="", repr=False)
-    chatglm_timestamp_format: str = "unix_ms"
+    chatglm_timestamp_format: str = "chatglm_checksum"
     chatglm_model_glm_5_3_flash: str = "glm-5.3-flash"
     chatglm_refresh_token_file: Path = Path("/run/secrets/chatglm_refresh_token")
     chatglm_device_id_file: Path = Path("/data/device-id")
@@ -42,4 +48,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

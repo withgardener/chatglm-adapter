@@ -11,14 +11,15 @@ class ChatGLMRequestBuilder:
     without coupling the OpenAI API layer to it.
     """
 
-    def __init__(self, upstream_model: str):
+    def __init__(self, upstream_model: str, assistant_id: str = "65940acff94777010aa6b796"):
         self._upstream_model = upstream_model
+        self._assistant_id = assistant_id
 
     def build(self, request: ChatCompletionRequest, conversation_id: str) -> ChatGLMRequest:
         metadata = {
             "cogview": {"rm_label_watermark": True},
             "is_test": False,
-            "input_question_type": "",
+            "input_question_type": "xxxx",
             "channel": "",
             "draft_id": "",
             "chat_mode": "deep_thinking",
@@ -28,7 +29,7 @@ class ChatGLMRequestBuilder:
             "platform": "pc",
         }
         body: dict[str, Any] = {
-            "assistant_id": "",
+            "assistant_id": self._assistant_id,
             "conversation_id": conversation_id,
             "project_id": "",
             "chat_type": "user_chat",
@@ -52,4 +53,3 @@ def _text_parts(content: str | list[ContentPart]) -> list[ContentPart]:
     if isinstance(content, str):
         return [ContentPart(type="text", text=content)]
     return [part for part in content if part.type == "text"]
-

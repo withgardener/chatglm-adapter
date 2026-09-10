@@ -43,7 +43,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
             status_code=400,
             content={"error": {"type": "invalid_request_error", "message": "unknown model"}},
         )
-    builder = ChatGLMRequestBuilder(upstream_model)
+    builder = ChatGLMRequestBuilder(upstream_model, container.settings.chatglm_assistant_id)
     request_id = request.headers.get("X-Request-Id") or str(uuid4())
     lease = await _acquire(container)
 

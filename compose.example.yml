@@ -10,10 +10,11 @@ services:
       CHATGLM_DEVICE_ID_FILE: /data/device-id
       CHATGLM_STREAM_URL: https://chatglm.cn/chatglm/backend-api/assistant/stream
       CHATGLM_SIGN_SECRET: ${CHATGLM_SIGN_SECRET:?set the verified sign secret}
-      CHATGLM_TIMESTAMP_FORMAT: ${CHATGLM_TIMESTAMP_FORMAT:-unix_ms}
-      CHATGLM_AUTH_REFRESH_URL: ${CHATGLM_AUTH_REFRESH_URL:?set the verified refresh endpoint}
-      CHATGLM_CONVERSATION_CREATE_URL: ${CHATGLM_CONVERSATION_CREATE_URL:?set the verified create endpoint}
-      CHATGLM_CONVERSATION_DELETE_URL: ${CHATGLM_CONVERSATION_DELETE_URL:-}
+      CHATGLM_TIMESTAMP_FORMAT: ${CHATGLM_TIMESTAMP_FORMAT:-chatglm_checksum}
+      CHATGLM_AUTH_REFRESH_URL: ${CHATGLM_AUTH_REFRESH_URL:-https://chatglm.cn/chatglm/user-api/user/refresh}
+      CHATGLM_TIME_SYNC_URL: ${CHATGLM_TIME_SYNC_URL:-https://chatglm.cn/chatglm/operation-api/config/cur_ts}
+      CHATGLM_ASSISTANT_ID: ${CHATGLM_ASSISTANT_ID:-65940acff94777010aa6b796}
+      CHATGLM_CONVERSATION_DELETE_URL: ${CHATGLM_CONVERSATION_DELETE_URL:-https://chatglm.cn/chatglm/mainchat-api/conversation/delete}
     volumes:
       - chatglm-adapter-data:/data
     secrets:
