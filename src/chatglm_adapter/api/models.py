@@ -17,7 +17,11 @@ async def models(request: Request) -> ModelsResponse:
     settings = request.app.state.container.settings
     return ModelsResponse(
         data=[
-            ModelCard(id=model_id, created=int(time.time()))
+            ModelCard(
+                id=model_id,
+                created=int(time.time()),
+                reasoning_efforts=settings.reasoning_efforts_for(model_id),
+            )
             for model_id in settings.public_models
         ]
     )

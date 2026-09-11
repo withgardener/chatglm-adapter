@@ -47,9 +47,9 @@ class ModelCard(BaseModel):
     object: Literal["model"] = "model"
     created: int = 0
     owned_by: str = "chatglm-web"
+    reasoning_efforts: list[str] | None = None
 
 
 class ModelsResponse(BaseModel):
     object: Literal["list"] = "list"
     data: list[ModelCard]
-

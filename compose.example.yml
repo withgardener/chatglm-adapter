@@ -14,6 +14,8 @@ services:
       CHATGLM_AUTH_REFRESH_URL: ${CHATGLM_AUTH_REFRESH_URL:-https://chatglm.cn/chatglm/user-api/user/refresh}
       CHATGLM_TIME_SYNC_URL: ${CHATGLM_TIME_SYNC_URL:-https://chatglm.cn/chatglm/operation-api/config/cur_ts}
       CHATGLM_ASSISTANT_ID: ${CHATGLM_ASSISTANT_ID:-65940acff94777010aa6b796}
+      CHATGLM_MODEL_GLM_5_3: ${CHATGLM_MODEL_GLM_5_3:-glm-5.3}
+      CHATGLM_MODEL_GLM_5_3_FLASH: ${CHATGLM_MODEL_GLM_5_3_FLASH:-glm-5.3-flash}
       CHATGLM_CONVERSATION_DELETE_URL: ${CHATGLM_CONVERSATION_DELETE_URL:-https://chatglm.cn/chatglm/mainchat-api/conversation/delete}
     volumes:
       - chatglm-adapter-data:/data

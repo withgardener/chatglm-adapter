@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     chatglm_device_brand: str = ""
     chatglm_sign_secret: str = Field(default="", repr=False)
     chatglm_timestamp_format: str = "chatglm_checksum"
+    chatglm_model_glm_5_3: str = "glm-5.3"
     chatglm_model_glm_5_3_flash: str = "glm-5.3-flash"
     chatglm_refresh_token_file: Path = Path("/run/secrets/chatglm_refresh_token")
     chatglm_device_id_file: Path = Path("/data/device-id")
@@ -42,7 +43,14 @@ class Settings(BaseSettings):
 
     @property
     def public_models(self) -> dict[str, str]:
-        return {"chatglm-glm-5.3-flash": self.chatglm_model_glm_5_3_flash}
+        return {
+            "chatglm-glm-5.3-flash": self.chatglm_model_glm_5_3_flash,
+            "chatglm-glm-5.3": self.chatglm_model_glm_5_3,
+        }
+
+    @staticmethod
+    def reasoning_efforts_for(_model_id: str) -> list[str]:
+        return ["low", "high", "max"]
 
 
 @lru_cache

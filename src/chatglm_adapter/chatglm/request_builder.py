@@ -22,7 +22,7 @@ class ChatGLMRequestBuilder:
             "input_question_type": "xxxx",
             "channel": "",
             "draft_id": "",
-            "chat_mode": "deep_thinking",
+            "chat_mode": _chat_mode(request.reasoning_effort),
             "selected_model": self._upstream_model,
             "is_networking": bool(request.web_search),
             "quote_log_id": "",
@@ -53,3 +53,14 @@ def _text_parts(content: str | list[ContentPart]) -> list[ContentPart]:
     if isinstance(content, str):
         return [ContentPart(type="text", text=content)]
     return [part for part in content if part.type == "text"]
+
+
+def _chat_mode(reasoning_effort: str | None) -> str:
+    # The web UI's current effort selector maps its three levels to these
+    # private values; reasoning_effort itself is not an upstream field.
+    return {
+        None: "deep_thinking",
+        "low": "",
+        "high": "thinking",
+        "max": "deep_thinking",
+    }[reasoning_effort]

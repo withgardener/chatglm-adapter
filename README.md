@@ -13,8 +13,9 @@ OpenAI client -> NewAPI -> chatglm-adapter -> ChatGLM Web private API
 这是 Phase 0/Phase 1 的可测试实现：
 
 - OpenAI `GET /v1/models` 和 `POST /v1/chat/completions`
+- `chatglm-glm-5.3` 与 `chatglm-glm-5.3-flash`
 - stream / non-stream 编码
-- reasoning、联网开关和明确拒绝 tools
+- `reasoning_effort=low|high|max`、reasoning、联网开关和明确拒绝 tools
 - access token 缓存、提前刷新、带当前网页签名的 refresh、401 单次重试
 - device ID 持久化、网页时间同步与签名、临时 conversation 生命周期
 - SSE raw parser -> normalized events -> OpenAI encoder

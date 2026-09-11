@@ -23,3 +23,11 @@ def test_unknown_parameters_are_reported_by_name_only():
     value = request(temperature=0.2, presence_penalty=0.7)
     assert validate_request(value, Settings()) == ["presence_penalty"]
 
+
+def test_both_models_are_registered_with_reasoning_efforts():
+    settings = Settings()
+    assert settings.public_models == {
+        "chatglm-glm-5.3-flash": "glm-5.3-flash",
+        "chatglm-glm-5.3": "glm-5.3",
+    }
+    assert settings.reasoning_efforts_for("chatglm-glm-5.3") == ["low", "high", "max"]

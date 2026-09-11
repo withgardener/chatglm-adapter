@@ -7,6 +7,9 @@
 | stream URL `/chatglm/backend-api/assistant/stream` | A | 2026-09-10 Firefox HAR + current frontend bundle | 网页实测与 bundle route 一致 | 2026-09-10 |
 | response MIME `text/event-stream` | A | 2026-09-10 Firefox HAR 摘要 | response headers | 2026-09-10 |
 | `selected_model=glm-5.3-flash` | A | 2026-09-10 Firefox HAR 摘要 | request body | 2026-09-10 |
+| `selected_model=glm-5.3` | C（待 live probe） | 当前网页选择器及用户指定模型名；未完成滑动验证后的真实提交 | 需用登录态提交并检查 request body | 待验证 |
+| GLM-5.3 网页可用性 | A | 2026-09-11 登录态网页实测 | 快速、深度、极致均返回预期短答案 | 2026-09-11 |
+| GLM-Flash 网页可用性 | A | 2026-09-11 登录态网页实测 + 2026-09-10 HAR | 快速、深度、极致均返回预期短答案 | 2026-09-11 |
 | `Authorization: Bearer <access JWT>` | A | 2026-09-10 Firefox HAR + current frontend bundle | request headers and auth helper | 2026-09-10 |
 | `X-Timestamp`, `X-Nonce`, `X-Sign` 存在 | A | 2026-09-10 Firefox HAR + current frontend bundle | request headers and signer helper | 2026-09-10 |
 | `MD5(timestamp-nonce-secret)` sign formula | B | HAR field set + current frontend bundle | formula cross-checked with reference implementation | 2026-09-10 |
@@ -16,6 +19,7 @@
 | conversation delete endpoint/method | A | current frontend bundle module `89971` | POST `/mainchat-api/conversation/delete` | 2026-09-10 |
 | SSE top-level schema | A | current frontend stream consumer | JSON frames with `status`, `conversation_id`, `parts`, `last_error` | 2026-09-10 |
 | SSE part mapping | B | current frontend part parser + logged-in UI probe | `think` -> reasoning, text-like parts -> content | 2026-09-10 |
+| reasoning effort mapping | A | 当前网页 bundle `46071` + 登录态网页三档实测：fast=`""`, standard=`thinking`, deep=`deep_thinking` | UI 快速/深度/极致均成功 | 2026-09-11 |
 | GLM-5.3 极致 selected model id | D | 未捕获真实提交 | 不能加入 `/v1/models` | 待验证 |
 
 ## 规则
