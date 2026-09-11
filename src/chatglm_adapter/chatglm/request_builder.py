@@ -1,7 +1,8 @@
 from typing import Any
 
-from ..openai.schemas import ChatCompletionRequest, ContentPart, Message
+from ..openai.schemas import ChatCompletionRequest, Message
 from .models import ChatGLMRequest
+from .upload import UploadedImage
 
 
 class ChatGLMRequestBuilder:
@@ -15,7 +16,12 @@ class ChatGLMRequestBuilder:
         self._upstream_model = upstream_model
         self._assistant_id = assistant_id
 
-    def build(self, request: ChatCompletionRequest, conversation_id: str) -> ChatGLMRequest:
+    def build(
+        self,
+        request: ChatCompletionRequest,
+        conversation_id: str,
+        images: dict[tuple[int, int], UploadedImage] | None = None,
+    ) -> ChatGLMRequest:
         metadata = {
             "cogview": {"rm_label_watermark": True},
             "is_test": False,
@@ -34,25 +40,52 @@ class ChatGLMRequestBuilder:
             "project_id": "",
             "chat_type": "user_chat",
             "meta_data": metadata,
-            "messages": [self._message(message) for message in request.messages],
+            "messages": [
+                self._message(message, message_index, images or {})
+                for message_index, message in enumerate(request.messages)
+            ],
         }
         return ChatGLMRequest(body=body)
 
     @staticmethod
-    def _message(message: Message) -> dict[str, Any]:
-        return {
-            "role": message.role,
-            "content": [
-                {"type": "text", "text": part.text}
-                for part in _text_parts(message.content)
-            ],
-        }
-
-
-def _text_parts(content: str | list[ContentPart]) -> list[ContentPart]:
-    if isinstance(content, str):
-        return [ContentPart(type="text", text=content)]
-    return [part for part in content if part.type == "text"]
+    def _message(
+        message: Message,
+        message_index: int,
+        images: dict[tuple[int, int], UploadedImage],
+    ) -> dict[str, Any]:
+        if isinstance(message.content, str):
+            return {
+                "role": message.role,
+                "content": [{"type": "text", "text": message.content}],
+            }
+        parts: list[dict[str, Any]] = []
+        image_order = 0
+        for part_index, part in enumerate(message.content):
+            if part.type == "text":
+                if part.text:
+                    parts.append({"type": "text", "text": part.text})
+                continue
+            uploaded = images.get((message_index, part_index))
+            if uploaded is None:
+                raise ValueError("image part was not uploaded")
+            parts.append(
+                {
+                    "type": "image",
+                    "image": [
+                        {
+                            "file_name": uploaded.file_name,
+                            "file_id": uploaded.file_id,
+                            "image_url": uploaded.image_url,
+                            "file_size": uploaded.file_size,
+                            "order": image_order,
+                            "width": 0,
+                            "height": 0,
+                        }
+                    ],
+                }
+            )
+            image_order += 1
+        return {"role": message.role, "content": parts}
 
 
 def _chat_mode(reasoning_effort: str | None) -> str:

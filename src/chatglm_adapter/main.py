@@ -12,6 +12,7 @@ from .chatglm.conversation import ConversationManager
 from .chatglm.cookies import CookieStore
 from .chatglm.device import resolve_device_id
 from .chatglm.signer import ChatGLMSigner, TimestampProvider
+from .chatglm.upload import FileUploader
 from .config import Settings, get_settings
 from .core.concurrency import UpstreamGate
 
@@ -46,6 +47,7 @@ class Container:
             self.signer,
             self.device_id,
             conversations,
+            FileUploader(settings, http_client, self.auth, self.signer, self.device_id),
         )
 
 

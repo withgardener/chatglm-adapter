@@ -14,6 +14,7 @@ from .models import ChatGLMConversation
 from .request_builder import ChatGLMRequestBuilder
 from .signer import ChatGLMSigner
 from .sse_parser import RawSSEEvent, decode_stream
+from .upload import FileUploader, UploadedImage
 
 
 class ChatGLMClient:
@@ -25,6 +26,7 @@ class ChatGLMClient:
         signer: ChatGLMSigner,
         device_id: str,
         conversations: ConversationManager,
+        uploader: FileUploader | None = None,
     ):
         self._settings = settings
         self._http = http_client
@@ -32,6 +34,21 @@ class ChatGLMClient:
         self._signer = signer
         self._device_id = device_id
         self._conversations = conversations
+        self._uploader = uploader
+
+    async def _upload_images(self, request) -> dict[tuple[int, int], UploadedImage]:
+        images: dict[tuple[int, int], UploadedImage] = {}
+        for message_index, message in enumerate(request.messages):
+            if not isinstance(message.content, list):
+                continue
+            for part_index, part in enumerate(message.content):
+                if part.type == "image_url":
+                    if self._uploader is None:
+                        raise UpstreamError("image upload is not configured", retryable=False)
+                    images[(message_index, part_index)] = await self._uploader.upload(
+                        (part.image_url or {}).get("url", "")
+                    )
+        return images
 
     async def stream(
         self,
@@ -40,6 +57,7 @@ class ChatGLMClient:
         *,
         request_id: str,
     ) -> AsyncIterator[RawSSEEvent]:
+        images = await self._upload_images(request)
         state = StreamState()
         attempted_refresh = False
         attempts = 0
@@ -57,7 +75,7 @@ class ChatGLMClient:
             conversation = None
             try:
                 conversation = await self._conversations.create(base_headers)
-                body = builder.build(request, conversation.conversation_id).body
+                body = builder.build(request, conversation.conversation_id, images).body
                 async with self._http.stream(
                     "POST",
                     self._settings.chatglm_stream_url,

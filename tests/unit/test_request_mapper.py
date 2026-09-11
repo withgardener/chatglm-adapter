@@ -31,3 +31,33 @@ def test_both_models_are_registered_with_reasoning_efforts():
         "chatglm-glm-5.3": "glm-5.3",
     }
     assert settings.reasoning_efforts_for("chatglm-glm-5.3") == ["low", "high", "max"]
+
+
+def test_data_url_images_are_accepted_and_remote_urls_rejected():
+    ok = ChatCompletionRequest(
+        model="chatglm-glm-5.3-flash",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "看图"},
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA=="}},
+                ],
+            }
+        ],
+    )
+    assert validate_request(ok, Settings()) == []
+
+    remote = ChatCompletionRequest(
+        model="chatglm-glm-5.3-flash",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "https://example.com/a.png"}}
+                ],
+            }
+        ],
+    )
+    with pytest.raises(UnsupportedFeatureError):
+        validate_request(remote, Settings())

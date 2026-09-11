@@ -13,6 +13,7 @@ services:
       CHATGLM_COOKIES_FILE: ${CHATGLM_COOKIES_FILE:-}
       CHATGLM_DEVICE_ID_FILE: /data/device-id
       CHATGLM_STREAM_URL: https://chatglm.cn/chatglm/backend-api/assistant/stream
+      CHATGLM_UPLOAD_URL: ${CHATGLM_UPLOAD_URL:-https://chatglm.cn/chatglm/productivity-api/file/chat_upload}
       CHATGLM_SIGN_SECRET: ${CHATGLM_SIGN_SECRET:?set the verified sign secret}
       CHATGLM_TIMESTAMP_FORMAT: ${CHATGLM_TIMESTAMP_FORMAT:-chatglm_checksum}
       CHATGLM_AUTH_REFRESH_URL: ${CHATGLM_AUTH_REFRESH_URL:-https://chatglm.cn/chatglm/user-api/user/refresh}

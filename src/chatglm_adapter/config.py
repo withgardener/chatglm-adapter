@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     strict_parameters: bool = False
 
     chatglm_stream_url: str = "https://chatglm.cn/chatglm/backend-api/assistant/stream"
+    chatglm_upload_url: str = "https://chatglm.cn/chatglm/productivity-api/file/chat_upload"
+    upload_max_image_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     chatglm_auth_refresh_url: str = "https://chatglm.cn/chatglm/user-api/user/refresh"
     chatglm_conversation_create_url: str = ""
     chatglm_conversation_delete_url: str = "https://chatglm.cn/chatglm/mainchat-api/conversation/delete"

@@ -8,6 +8,7 @@ class ContentPart(BaseModel):
 
     type: str = "text"
     text: str = ""
+    image_url: dict[str, Any] | None = None
 
 
 class Message(BaseModel):
@@ -16,9 +17,13 @@ class Message(BaseModel):
     name: str | None = None
 
     @model_validator(mode="after")
-    def require_text_content(self):
-        if isinstance(self.content, list) and any(part.type != "text" for part in self.content):
-            raise ValueError("only text message content is supported")
+    def require_supported_content(self):
+        if isinstance(self.content, list):
+            allowed = {"text", "image_url"}
+            if any(part.type not in allowed for part in self.content):
+                raise ValueError("only text and image_url message content is supported")
+            if self.role != "user" and any(part.type == "image_url" for part in self.content):
+                raise ValueError("image_url content is only supported in user messages")
         return self
 
 

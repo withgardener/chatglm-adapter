@@ -16,7 +16,7 @@ OpenAI client -> NewAPI -> chatglm-adapter -> ChatGLM Web private API
 - `chatglm-glm-5.3` 与 `chatglm-glm-5.3-flash`
 - stream / non-stream 编码
 - `reasoning_effort=low|high|max`、reasoning、联网开关和明确拒绝 tools
-- 仅支持文本消息；多模态（`image_url`）暂不支持，ChatGLM Web 的图片上传链路尚未抓取协议证据
+- 图片输入：接受 `image_url` 的 `data:image/...;base64` URL，经 `chat_upload` 端点上传后引用（协议证据：2026-09-11 HAR）；远程 URL 有意拒绝以避免 SSRF
 - access token 缓存、提前刷新、带当前网页签名的 refresh、401 单次重试
 - 可选完整 Cookie header 导入：从 Cookie 串读取 refresh token、透传 WAF cookie、rotation 原子回写 cookie 文件
 - device ID 持久化，导入 Cookie 时自动改用 token 的 `device_id` claim 与浏览器保持一致

@@ -21,7 +21,7 @@
 | init/processing 生命周期帧（`parts: []`、`last_error: {}`） | A | 2026-09-11 live probe shape | 显式识别并忽略；`last_error` 非空时报 Error | 2026-09-11 |
 | 内容帧 part 文本为累计快照 | A | 2026-09-11 NewAPI 端到端复现重复输出 + probe | StreamNormalizer 按通道 diff 快照为增量 | 2026-09-11 |
 | part 级 `status:"finish"` 语义 | A | 2026-09-11 live stream：think part 先 finish，答案后输出 | part 级 finish 不终止流；终止只认顶层 status/[DONE] | 2026-09-11 |
-| 图片上传链路（多模态） | C | 2026-09-11 HAR 含 `productivity-api/file/chat_upload` 与图片会话；adapter 当前 422 拒绝 image_url | 上传请求/响应 schema 已可从 HAR 提取，待实现 | 待实现 |
+| 图片上传链路（多模态） | A | 2026-09-11 HAR：`productivity-api/file/chat_upload` multipart（file/from/assistant_id）→ `result.file_id/file_url`；消息内 `{"type":"image","image":[{file_id,image_url,file_name,file_size,order,width,height}]}` | adapter 已实现 data: URL 上传与引用 | 2026-09-11 |
 | part.content item 结构（think/text/tool_calls/tool_result，增量分片） | A | 2026-09-11 HAR 全量回放：53 TextDelta + 39 ReasoningDelta 还原完整答案，无 Unknown | `_normalize_content_item` 按 item.type 分发 | 2026-09-11 |
 | conversation allocation | A | current frontend stream builder | starts with empty `conversation_id`; stream response supplies id | 2026-09-10 |
 | conversation delete endpoint/method | A | current frontend bundle module `89971` | POST `/mainchat-api/conversation/delete` | 2026-09-10 |
