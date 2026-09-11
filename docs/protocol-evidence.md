@@ -16,6 +16,9 @@
 | timestamp sync endpoint and checksum transform | A | current frontend bundle module `14957` and signer helper | route and JavaScript transform inspected | 2026-09-10 |
 | refresh endpoint/body/response schema | A | current frontend bundle | POST `{}` with refresh bearer; reads `data.result.*` | 2026-09-10 |
 | refresh 是否需要完整 WAF Cookie | C | 2026-09-11 机房 IP 仅 refresh token 返回 400；怀疑 WAF（`acw_tc`/`ssxmod_itna`）或 device 绑定 | 需用完整 Cookie 导入后 live probe 对比 | 待验证 |
+| 完整 Cookie 导入后 refresh/stream 可用性 | A | 2026-09-11 live probe：PASS auth/sign/stream，完整 Cookie + token device_id + Firefox UA | `scripts/probe_chatglm.py --cookies-file` | 2026-09-11 |
+| 内容帧顶层恒带 `tool_calls: []` | A | 2026-09-11 live probe：13 个正文帧被误判为 ToolEvent，正文为空 | parts 优先归一化，tool/search 判定要求 truthy 值 | 2026-09-11 |
+| init/processing 生命周期帧（`parts: []`、`last_error: {}`） | A | 2026-09-11 live probe shape | 显式识别并忽略；`last_error` 非空时报 Error | 2026-09-11 |
 | conversation allocation | A | current frontend stream builder | starts with empty `conversation_id`; stream response supplies id | 2026-09-10 |
 | conversation delete endpoint/method | A | current frontend bundle module `89971` | POST `/mainchat-api/conversation/delete` | 2026-09-10 |
 | SSE top-level schema | A | current frontend stream consumer | JSON frames with `status`, `conversation_id`, `parts`, `last_error` | 2026-09-10 |

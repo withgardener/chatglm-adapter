@@ -89,12 +89,18 @@ def normalize(raw: RawSSEEvent) -> list[NormalizedEvent]:
     if "error" in event_name or status in {"error", "failed"} or _has_key(payload, "error"):
         message = _first_string(payload, ("message", "error", "msg")) or "upstream error"
         return [Error(message=message)]
-    if "search" in event_name or _has_key(payload, "search_results"):
-        return [SearchEvent(payload=_as_dict(payload))]
-    if "tool" in event_name or _has_key(payload, "tool_calls"):
-        return [ToolEvent(payload=_as_dict(payload))]
 
+    # Current content frames carry a top-level "tool_calls": [] even for plain
+    # text answers, so parts must be normalized before the tool/search checks,
+    # and those checks must require a truthy value rather than key presence.
     if isinstance(payload, dict) and isinstance(payload.get("parts"), list):
+        if not payload["parts"]:
+            # Known lifecycle frame (init/processing) with no content yet.
+            last_error = payload.get("last_error")
+            if isinstance(last_error, dict) and last_error:
+                message = _first_string(last_error, ("message", "msg")) or "upstream error"
+                return [Error(message=message)]
+            return []
         result: list[NormalizedEvent] = []
         for part in payload["parts"]:
             result.extend(_normalize_part(part))
@@ -102,6 +108,11 @@ def normalize(raw: RawSSEEvent) -> list[NormalizedEvent]:
             result.append(Finish())
         if result:
             return result
+
+    if "search" in event_name or _has_truthy_key(payload, "search_results"):
+        return [SearchEvent(payload=_as_dict(payload))]
+    if "tool" in event_name or _has_truthy_key(payload, "tool_calls"):
+        return [ToolEvent(payload=_as_dict(payload))]
 
     result: list[NormalizedEvent] = []
     reasoning = _first_string(payload, ("reasoning_content", "reasoning", "thinking"))
@@ -163,6 +174,16 @@ def _has_key(value: object, key: str) -> bool:
         return key in value or any(_has_key(v, key) for v in value.values())
     if isinstance(value, list):
         return any(_has_key(v, key) for v in value)
+    return False
+
+
+def _has_truthy_key(value: object, key: str) -> bool:
+    if isinstance(value, dict):
+        if key in value and value[key]:
+            return True
+        return any(_has_truthy_key(v, key) for v in value.values())
+    if isinstance(value, list):
+        return any(_has_truthy_key(v, key) for v in value)
     return False
 
 

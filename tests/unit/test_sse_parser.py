@@ -31,3 +31,43 @@ def test_normalize_current_chatglm_parts_and_finish_status():
         '{"answer_type":"text","text":"答案","status":"finish"}]}',
     )
     assert normalize(raw) == [ReasoningDelta("先想"), TextDelta("答案"), Finish()]
+
+
+def test_content_frame_with_empty_tool_calls_is_not_a_tool_event():
+    # Live probe 2026-09-11: every current content frame carries a top-level
+    # "tool_calls": [], which must not shadow the parts payload.
+    raw = RawSSEEvent(
+        None,
+        '{"id":"msg-1","conversation_id":"conv-1","status":"processing",'
+        '"parts":[{"type":"content","content":[{"type":"text","text":"你好"}],'
+        '"status":"processing"}],"tool_calls":[],"last_error":{}}',
+    )
+    assert normalize(raw) == [TextDelta("你好")]
+
+
+def test_init_frame_with_empty_parts_is_ignored():
+    raw = RawSSEEvent(
+        None,
+        '{"id":"msg-1","conversation_id":"conv-1","assistant_id":"a",'
+        '"parts":[],"created_at":"2026-09-11","status":"init","last_error":{},'
+        '"meta_data":{"input_question_type":"xxxx"}}',
+    )
+    assert normalize(raw) == []
+
+
+def test_empty_parts_with_last_error_is_an_error():
+    raw = RawSSEEvent(
+        None,
+        '{"status":"finish","parts":[],"last_error":{"message":"风控拦截"}}',
+    )
+    result = normalize(raw)
+    assert len(result) == 1
+    assert result[0].message == "风控拦截"
+
+
+def test_truthy_tool_calls_without_parts_stays_a_tool_event():
+    result = normalize(
+        RawSSEEvent(None, '{"tool_calls":[{"name":"search","args":{}}]}')
+    )
+    assert len(result) == 1
+    assert result[0].__class__.__name__ == "ToolEvent"
