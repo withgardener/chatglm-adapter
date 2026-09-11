@@ -6,6 +6,7 @@ import httpx
 
 from ..config import Settings
 from ..core.errors import UnsupportedFeatureError, UpstreamError
+from ..security.redaction import redact_text
 from .auth import AuthManager
 from .headers import build_headers
 from .signer import ChatGLMSigner
@@ -96,8 +97,9 @@ class FileUploader:
         except httpx.HTTPError as exc:
             raise UpstreamError("ChatGLM image upload request failed", retryable=True) from exc
         if response.status_code >= 400:
+            excerpt = redact_text(response.text)[:200]
             raise UpstreamError(
-                f"ChatGLM image upload rejected ({response.status_code})",
+                f"ChatGLM image upload rejected ({response.status_code}): {excerpt}",
                 status_code=response.status_code,
                 retryable=response.status_code in {429, 500, 502, 503, 504},
             )

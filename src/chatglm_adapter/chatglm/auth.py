@@ -9,6 +9,7 @@ import httpx
 
 from ..config import Settings
 from ..core.errors import AuthenticationError, ConfigurationError, UpstreamError
+from ..security.redaction import redact_text
 from ..security.secrets import atomic_write_secret, read_secret_file
 from .cookies import CookieStore
 from .headers import build_headers
@@ -117,7 +118,10 @@ class AuthManager:
         except httpx.HTTPError as exc:
             raise UpstreamError("ChatGLM token refresh request failed", retryable=True) from exc
         if response.status_code >= 400:
-            raise AuthenticationError(f"ChatGLM token refresh rejected ({response.status_code})")
+            excerpt = redact_text(response.text)[:200]
+            raise AuthenticationError(
+                f"ChatGLM token refresh rejected ({response.status_code}): {excerpt}"
+            )
         try:
             payload = response.json()
         except ValueError as exc:

@@ -7,6 +7,7 @@ import httpx
 from ..config import Settings
 from ..core.errors import UpstreamError
 from ..core.retry import StreamState
+from ..security.redaction import redact_text
 from .auth import AuthManager
 from .conversation import ConversationManager
 from .headers import build_headers
@@ -90,8 +91,11 @@ class ChatGLMClient:
                         await asyncio.sleep(0.2)
                         continue
                     if response.status_code >= 400:
+                        excerpt = redact_text(
+                            (await response.aread()).decode("utf-8", "replace")
+                        )[:200]
                         raise UpstreamError(
-                            f"ChatGLM stream rejected ({response.status_code})",
+                            f"ChatGLM stream rejected ({response.status_code}): {excerpt}",
                             status_code=response.status_code,
                             retryable=(response.status_code in {500, 502, 503, 504} and not state.started),
                         )

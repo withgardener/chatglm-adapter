@@ -95,3 +95,18 @@ async def test_upload_rejection_raises_upstream_error():
     uploader = _uploader(handler)
     with pytest.raises(UpstreamError):
         await uploader.upload(f"data:image/png;base64,{_PNG}")
+
+
+@pytest.mark.asyncio
+async def test_upload_rejection_includes_redacted_body_excerpt():
+    leaked = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJVadQssw5Jc"
+
+    def handler(request: httpx.Request):
+        return httpx.Response(429, text=f'{{"message":"quota exceeded","token":"{leaked}"}}')
+
+    uploader = _uploader(handler)
+    with pytest.raises(UpstreamError) as excinfo:
+        await uploader.upload(f"data:image/png;base64,{_PNG}")
+    assert "quota exceeded" in str(excinfo.value)
+    assert leaked not in str(excinfo.value)
+    assert "<JWT_REDACTED>" in str(excinfo.value)
