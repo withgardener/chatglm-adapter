@@ -15,9 +15,9 @@ from chatglm_adapter.chatglm.cookies import CookieStore
 from chatglm_adapter.chatglm.device import resolve_device_id
 from chatglm_adapter.chatglm.request_builder import ChatGLMRequestBuilder
 from chatglm_adapter.chatglm.signer import ChatGLMSigner, TimestampProvider
-from chatglm_adapter.chatglm.sse_parser import normalize
+from chatglm_adapter.chatglm.sse_parser import StreamNormalizer
 from chatglm_adapter.config import Settings
-from chatglm_adapter.core.events import Unknown
+from chatglm_adapter.core.events import ReasoningDelta, TextDelta, Unknown
 from chatglm_adapter.openai.schemas import ChatCompletionRequest
 
 
@@ -69,6 +69,9 @@ async def probe(args: argparse.Namespace) -> int:
         try:
             event_count = 0
             counts: dict[str, int] = {}
+            text_chars = 0
+            reasoning_chars = 0
+            normalizer = StreamNormalizer()
             async for raw in chatglm.stream(
                 request,
                 ChatGLMRequestBuilder(
@@ -78,14 +81,19 @@ async def probe(args: argparse.Namespace) -> int:
                 request_id="protocol-probe",
             ):
                 event_count += 1
-                for event in normalize(raw):
+                for event in normalizer.normalize(raw):
                     if isinstance(event, Unknown):
                         # Shapes carry field names and type markers only.
                         print(f"UNKNOWN event={event.event} shape={event.payload_shape}")
-                    else:
-                        name = type(event).__name__
-                        counts[name] = counts.get(name, 0) + 1
+                        continue
+                    name = type(event).__name__
+                    counts[name] = counts.get(name, 0) + 1
+                    if isinstance(event, TextDelta):
+                        text_chars += len(event.text)
+                    elif isinstance(event, ReasoningDelta):
+                        reasoning_chars += len(event.text)
             print(f"event summary: {counts or 'no normalized events'}")
+            print(f"text_chars={text_chars} reasoning_chars={reasoning_chars}")
             if not event_count:
                 print("FAIL stream")
                 return 1

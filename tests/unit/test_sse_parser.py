@@ -1,4 +1,9 @@
-from chatglm_adapter.chatglm.sse_parser import RawSSEEvent, SSEDecoder, normalize
+from chatglm_adapter.chatglm.sse_parser import (
+    RawSSEEvent,
+    SSEDecoder,
+    StreamNormalizer,
+    normalize,
+)
 from chatglm_adapter.core.events import Finish, ReasoningDelta, TextDelta, Unknown
 
 
@@ -71,3 +76,54 @@ def test_truthy_tool_calls_without_parts_stays_a_tool_event():
     )
     assert len(result) == 1
     assert result[0].__class__.__name__ == "ToolEvent"
+
+
+def _texts(events):
+    return [event.text for event in events if isinstance(event, TextDelta)]
+
+
+def test_stream_normalizer_diffs_cumulative_snapshots():
+    normalizer = StreamNormalizer()
+    frames = [
+        '{"parts":[{"answer_type":"text","text":"我是GLM"}]}',
+        '{"parts":[{"answer_type":"text","text":"我是GLM，由智谱开发"}]}',
+        '{"parts":[{"answer_type":"text","text":"我是GLM，由智谱开发"}]}',
+        '{"status":"finish","parts":[{"answer_type":"text","text":"我是GLM，由智谱开发。","status":"finish"}]}',
+    ]
+    output = []
+    for frame in frames:
+        output.extend(normalizer.normalize(RawSSEEvent(None, frame)))
+    assert _texts(output) == ["我是GLM", "，由智谱开发", "。"]
+    assert isinstance(output[-1], Finish)
+
+
+def test_stream_normalizer_passes_incremental_deltas_through():
+    normalizer = StreamNormalizer()
+    frames = [
+        '{"parts":[{"answer_type":"text","text":"你"}]}',
+        '{"parts":[{"answer_type":"text","text":"好"}]}',
+    ]
+    output = []
+    for frame in frames:
+        output.extend(normalizer.normalize(RawSSEEvent(None, frame)))
+    assert _texts(output) == ["你", "好"]
+
+
+def test_stream_normalizer_keeps_reasoning_channel_separate():
+    normalizer = StreamNormalizer()
+    frames = [
+        '{"parts":[{"answer_type":"think","text":"第一步"},'
+        '{"answer_type":"text","text":"答案"}]}',
+        '{"parts":[{"answer_type":"think","text":"第一步，第二步"},'
+        '{"answer_type":"text","text":"答案"}]}',
+    ]
+    reasoning = []
+    text = []
+    for frame in frames:
+        for event in normalizer.normalize(RawSSEEvent(None, frame)):
+            if isinstance(event, ReasoningDelta):
+                reasoning.append(event.text)
+            elif isinstance(event, TextDelta):
+                text.append(event.text)
+    assert reasoning == ["第一步", "，第二步"]
+    assert text == ["答案"]

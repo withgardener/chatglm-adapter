@@ -134,6 +134,43 @@ def normalize(raw: RawSSEEvent) -> list[NormalizedEvent]:
     return [Unknown(event=raw.event, payload_shape=_shape(payload))]
 
 
+class StreamNormalizer:
+    """Stateful per-request normalizer.
+
+    Current ChatGLM content frames carry cumulative per-part snapshots rather
+    than incremental deltas, so text channels must be diffed against what has
+    already been emitted; incremental senders still pass through unchanged.
+    """
+
+    def __init__(self):
+        self._emitted: dict[str, str] = {}
+
+    def normalize(self, raw: RawSSEEvent) -> list[NormalizedEvent]:
+        events = normalize(raw)
+        return [event for event in (self._dedupe(event) for event in events) if event]
+
+    def _dedupe(self, event: NormalizedEvent) -> NormalizedEvent | None:
+        if isinstance(event, TextDelta):
+            return self._diff("text", event, event.text)
+        if isinstance(event, ReasoningDelta):
+            return self._diff("reasoning", event, event.text)
+        return event
+
+    def _diff(self, channel: str, event: NormalizedEvent, text: str) -> NormalizedEvent | None:
+        if not text:
+            return None
+        emitted = self._emitted.get(channel, "")
+        if emitted and text == emitted:
+            return None
+        if emitted and text.startswith(emitted):
+            self._emitted[channel] = text
+            if isinstance(event, TextDelta):
+                return TextDelta(text[len(emitted):])
+            return ReasoningDelta(text[len(emitted):])
+        self._emitted[channel] = emitted + text
+        return event
+
+
 def _normalize_part(part: object) -> list[NormalizedEvent]:
     if not isinstance(part, dict):
         return [Unknown(event=None, payload_shape=_shape(part))]

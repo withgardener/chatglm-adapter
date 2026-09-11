@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..chatglm.request_builder import ChatGLMRequestBuilder
-from ..chatglm.sse_parser import normalize
+from ..chatglm.sse_parser import StreamNormalizer
 from ..core.errors import AdapterError, QueueTimeoutError, UnsupportedFeatureError
 from ..core.events import Error as UpstreamEventError
 from ..core.events import Unknown
@@ -58,8 +58,9 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         async with lease:
             encoder = OpenAIEncoder(body.model)
             accumulator = CompletionAccumulator()
+            normalizer = StreamNormalizer()
             async for raw in container.chatglm.stream(body, builder, request_id=request_id):
-                for event in normalize(raw):
+                for event in normalizer.normalize(raw):
                     if isinstance(event, UpstreamEventError):
                         return JSONResponse(
                             status_code=502,
@@ -74,11 +75,12 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
 async def _stream_body(container, body, builder, request_id, lease) -> AsyncIterator[str]:
     encoder = OpenAIEncoder(body.model)
     accumulator = CompletionAccumulator()
+    normalizer = StreamNormalizer()
     try:
         yield encoder.role_chunk()
         async with lease:
             async for raw in container.chatglm.stream(body, builder, request_id=request_id):
-                for event in normalize(raw):
+                for event in normalizer.normalize(raw):
                     if isinstance(event, Unknown):
                         # Shapes contain only field names and type markers, no
                         # payload values, so this stays within the log policy.
