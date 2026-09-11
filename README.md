@@ -17,7 +17,10 @@ OpenAI client -> NewAPI -> chatglm-adapter -> ChatGLM Web private API
 - stream / non-stream 编码
 - `reasoning_effort=low|high|max`、reasoning、联网开关和明确拒绝 tools
 - access token 缓存、提前刷新、带当前网页签名的 refresh、401 单次重试
-- device ID 持久化、网页时间同步与签名、临时 conversation 生命周期
+- 可选完整 Cookie header 导入：从 Cookie 串读取 refresh token、透传 WAF cookie、rotation 原子回写 cookie 文件
+- device ID 持久化，导入 Cookie 时自动改用 token 的 `device_id` claim 与浏览器保持一致
+- 默认浏览器 User-Agent，可通过 `CHATGLM_USER_AGENT` 覆盖
+- 网页时间同步与签名、临时 conversation 生命周期
 - SSE raw parser -> normalized events -> OpenAI encoder
 - 单账号并发槽、队列超时、客户端取消传播
 - 脱敏日志和 HAR 脱敏脚本

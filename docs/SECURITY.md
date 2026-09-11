@@ -1,6 +1,6 @@
 # Security notes
 
-- `CHATGLM_REFRESH_TOKEN_FILE` 是唯一支持的 ChatGLM refresh token 来源；文件应由 Docker secret 或 0600 文件提供。
+- ChatGLM 凭证只接受两种 0600 文件来源：`CHATGLM_REFRESH_TOKEN_FILE`（仅 refresh token）或 `CHATGLM_COOKIES_FILE`（完整 Cookie header，含 refresh token 与 WAF cookie）。两者都不得写入 `.env`、Git、镜像或日志。
 - adapter API key 与 ChatGLM access token 完全分离。
 - access token 只在内存缓存，不写日志。
 - device ID 可持久化在 `/data/device-id`，但不进入日志或 health response。

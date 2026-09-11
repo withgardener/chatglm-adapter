@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,7 +34,19 @@ class Settings(BaseSettings):
     chatglm_model_glm_5_3: str = "glm-5.3"
     chatglm_model_glm_5_3_flash: str = "glm-5.3-flash"
     chatglm_refresh_token_file: Path = Path("/run/secrets/chatglm_refresh_token")
+    chatglm_cookies_file: Path | None = None
+    chatglm_device_id: str = ""
     chatglm_device_id_file: Path = Path("/data/device-id")
+    chatglm_user_agent: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"
+    )
+
+    @field_validator("chatglm_cookies_file", mode="before")
+    @classmethod
+    def _empty_cookies_file_to_none(cls, value: object) -> object:
+        if value in ("", None):
+            return None
+        return value
 
     upstream_max_concurrency: int = Field(default=1, ge=1)
     queue_max_wait_seconds: float = Field(default=30.0, ge=0)

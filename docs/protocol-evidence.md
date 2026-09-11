@@ -15,6 +15,7 @@
 | `MD5(timestamp-nonce-secret)` sign formula | B | HAR field set + current frontend bundle | formula cross-checked with reference implementation | 2026-09-10 |
 | timestamp sync endpoint and checksum transform | A | current frontend bundle module `14957` and signer helper | route and JavaScript transform inspected | 2026-09-10 |
 | refresh endpoint/body/response schema | A | current frontend bundle | POST `{}` with refresh bearer; reads `data.result.*` | 2026-09-10 |
+| refresh 是否需要完整 WAF Cookie | C | 2026-09-11 机房 IP 仅 refresh token 返回 400；怀疑 WAF（`acw_tc`/`ssxmod_itna`）或 device 绑定 | 需用完整 Cookie 导入后 live probe 对比 | 待验证 |
 | conversation allocation | A | current frontend stream builder | starts with empty `conversation_id`; stream response supplies id | 2026-09-10 |
 | conversation delete endpoint/method | A | current frontend bundle module `89971` | POST `/mainchat-api/conversation/delete` | 2026-09-10 |
 | SSE top-level schema | A | current frontend stream consumer | JSON frames with `status`, `conversation_id`, `parts`, `last_error` | 2026-09-10 |

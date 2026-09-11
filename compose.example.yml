@@ -7,6 +7,10 @@ services:
     environment:
       ADAPTER_INTERNAL_API_KEY: ${ADAPTER_INTERNAL_API_KEY:?set ADAPTER_INTERNAL_API_KEY}
       CHATGLM_REFRESH_TOKEN_FILE: /run/secrets/chatglm_refresh_token
+      # Optional full-cookie import. The cookie file must be writable by the
+      # container user (rotation rewrites it), so prefer a bind mount with
+      # mode 0600, uid 10001 over a read-only Docker secret.
+      CHATGLM_COOKIES_FILE: ${CHATGLM_COOKIES_FILE:-}
       CHATGLM_DEVICE_ID_FILE: /data/device-id
       CHATGLM_STREAM_URL: https://chatglm.cn/chatglm/backend-api/assistant/stream
       CHATGLM_SIGN_SECRET: ${CHATGLM_SIGN_SECRET:?set the verified sign secret}

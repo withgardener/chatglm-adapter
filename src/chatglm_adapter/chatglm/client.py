@@ -52,6 +52,7 @@ class ChatGLMClient:
                 access_token=token,
                 device_id=self._device_id,
                 request_id=request_id,
+                cookie=self._auth.cookie_header(token),
             )
             conversation = None
             try:

@@ -57,6 +57,26 @@ chmod 600 secrets/chatglm_refresh_token
 
 如果从已登录浏览器取值，请只读取自己账号的 `chatglm_refresh_token`，复制后立即关闭开发者工具；不要把 cookie、access token 或 HAR 发给别人。
 
+### 5a. 可选：导入完整 Cookie header
+
+如果只用 refresh token 时 refresh 接口返回 400/403（常见于机房 IP 被 WAF 拦截），改为导入自己账号已登录会话的完整 Cookie header。adapter 会从 Cookie 串中读取 `chatglm_refresh_token`，向上游透传整个 Cookie（含 WAF cookie），并把 refresh token rotation 原子写回该文件：
+
+```bash
+umask 077
+printf '%s' '替换成完整 Cookie header（chatglm_refresh_token=...; chatglm_token=...; ...）' > secrets/chatglm_cookies
+chmod 600 secrets/chatglm_cookies
+```
+
+cookie 文件必须是 0600 且容器内可写（rotation 会重写它），用 bind mount 而不是只读 Docker secret，并在 `.env` 中设置：
+
+```dotenv
+CHATGLM_COOKIES_FILE=/run/secrets/chatglm_cookies
+```
+
+设置了 `CHATGLM_COOKIES_FILE` 后 `chatglm_refresh_token` 文件不再需要。device ID 会自动取 token 中的 `device_id` claim，与浏览器保持一致；也可以用 `CHATGLM_DEVICE_ID` 显式指定。
+
+注意：WAF cookie（`acw_tc`、`ssxmod_itna` 等）与导出时的浏览器会话和 IP 绑定且会过期；如果部署机出口 IP 与浏览器差异太大，透传 cookie 也可能不够，需要重新执行 live probe 确认。
+
 ## 6. 准备 Docker network
 
 如果 NewAPI 已经使用 `ai-backend`，确认它存在：
@@ -168,6 +188,8 @@ adapter 运行时发生 refresh token rotation 时会对 secret 文件进行临�
 ### 401 或 refresh rejected
 
 不要把 access token 写入配置。确认 secret 文件中是当前账号的 refresh token，并检查账号是否在 ChatGLM 网页端要求重新登录。
+
+refresh 返回 400/403 且 token 确认有效时，通常是 WAF 拦截了非浏览器特征请求（机房 IP、`python-httpx` UA 或缺少 WAF cookie）。确认 `CHATGLM_USER_AGENT` 未被改成非浏览器值；仍失败则按第 5a 节导入完整 Cookie header。
 
 ### 签名失败
 

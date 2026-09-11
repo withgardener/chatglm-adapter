@@ -9,7 +9,8 @@ from .api.models import router as models_router
 from .chatglm.auth import AuthManager
 from .chatglm.client import ChatGLMClient
 from .chatglm.conversation import ConversationManager
-from .chatglm.device import load_or_create_device_id
+from .chatglm.cookies import CookieStore
+from .chatglm.device import resolve_device_id
 from .chatglm.signer import ChatGLMSigner, TimestampProvider
 from .config import Settings, get_settings
 from .core.concurrency import UpstreamGate
@@ -23,12 +24,20 @@ class Container:
             settings.upstream_max_concurrency,
             settings.queue_max_wait_seconds,
         )
-        self.device_id = load_or_create_device_id(settings.chatglm_device_id_file)
+        cookies = (
+            CookieStore.load(settings.chatglm_cookies_file)
+            if settings.chatglm_cookies_file
+            else None
+        )
+        self.device_id = resolve_device_id(
+            settings,
+            cookies.refresh_token if cookies else None,
+        )
         self.signer = ChatGLMSigner(
             settings.chatglm_sign_secret,
             TimestampProvider(settings.chatglm_timestamp_format),
         )
-        self.auth = AuthManager(settings, http_client, self.signer, self.device_id)
+        self.auth = AuthManager(settings, http_client, self.signer, self.device_id, cookies)
         conversations = ConversationManager(settings, http_client)
         self.chatglm = ChatGLMClient(
             settings,
