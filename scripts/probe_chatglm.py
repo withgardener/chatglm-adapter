@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import time
 from pathlib import Path
 
 import httpx
@@ -71,7 +72,11 @@ async def probe(args: argparse.Namespace) -> int:
             counts: dict[str, int] = {}
             text_chars = 0
             reasoning_chars = 0
+            first_event_ms: float | None = None
+            last_event_ms = 0.0
+            text_arrivals: list[float] = []
             normalizer = StreamNormalizer()
+            started = time.perf_counter()
             async for raw in chatglm.stream(
                 request,
                 ChatGLMRequestBuilder(
@@ -81,6 +86,10 @@ async def probe(args: argparse.Namespace) -> int:
                 request_id="protocol-probe",
             ):
                 event_count += 1
+                elapsed_ms = (time.perf_counter() - started) * 1000
+                if first_event_ms is None:
+                    first_event_ms = elapsed_ms
+                last_event_ms = elapsed_ms
                 for event in normalizer.normalize(raw):
                     if isinstance(event, Unknown):
                         # Shapes carry field names and type markers only.
@@ -90,10 +99,23 @@ async def probe(args: argparse.Namespace) -> int:
                     counts[name] = counts.get(name, 0) + 1
                     if isinstance(event, TextDelta):
                         text_chars += len(event.text)
+                        text_arrivals.append(elapsed_ms)
                     elif isinstance(event, ReasoningDelta):
                         reasoning_chars += len(event.text)
             print(f"event summary: {counts or 'no normalized events'}")
             print(f"text_chars={text_chars} reasoning_chars={reasoning_chars}")
+            if first_event_ms is not None:
+                print(f"first_event_ms={first_event_ms:.0f} last_event_ms={last_event_ms:.0f}")
+            if text_arrivals:
+                gaps = [
+                    round(b - a) for a, b in zip(text_arrivals, text_arrivals[1:], strict=True)
+                ]
+                print(
+                    f"text_deltas={len(text_arrivals)} "
+                    f"first_text_ms={text_arrivals[0]:.0f} "
+                    f"delta_gap_ms min={min(gaps) if gaps else 0} "
+                    f"max={max(gaps) if gaps else 0}"
+                )
             if not event_count:
                 print("FAIL stream")
                 return 1

@@ -19,6 +19,9 @@
 | 完整 Cookie 导入后 refresh/stream 可用性 | A | 2026-09-11 live probe：PASS auth/sign/stream，完整 Cookie + token device_id + Firefox UA | `scripts/probe_chatglm.py --cookies-file` | 2026-09-11 |
 | 内容帧顶层恒带 `tool_calls: []` | A | 2026-09-11 live probe：13 个正文帧被误判为 ToolEvent，正文为空 | parts 优先归一化，tool/search 判定要求 truthy 值 | 2026-09-11 |
 | init/processing 生命周期帧（`parts: []`、`last_error: {}`） | A | 2026-09-11 live probe shape | 显式识别并忽略；`last_error` 非空时报 Error | 2026-09-11 |
+| 内容帧 part 文本为累计快照 | A | 2026-09-11 NewAPI 端到端复现重复输出 + probe | StreamNormalizer 按通道 diff 快照为增量 | 2026-09-11 |
+| part 级 `status:"finish"` 语义 | A | 2026-09-11 live stream：think part 先 finish，答案后输出 | part 级 finish 不终止流；终止只认顶层 status/[DONE] | 2026-09-11 |
+| 图片上传链路（多模态） | D | 未抓取上传 HAR；adapter 当前 422 拒绝 image_url | 需抓 ChatGLM Web 上传流程 HAR 后实现 | 待验证 |
 | conversation allocation | A | current frontend stream builder | starts with empty `conversation_id`; stream response supplies id | 2026-09-10 |
 | conversation delete endpoint/method | A | current frontend bundle module `89971` | POST `/mainchat-api/conversation/delete` | 2026-09-10 |
 | SSE top-level schema | A | current frontend stream consumer | JSON frames with `status`, `conversation_id`, `parts`, `last_error` | 2026-09-10 |

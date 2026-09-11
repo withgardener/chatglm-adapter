@@ -186,20 +186,12 @@ def _normalize_part(part: object) -> list[NormalizedEvent]:
         return [ToolEvent(payload=part)]
     if answer_type in {"think", "thinking", "reasoning", "advanced_thinking"}:
         text = _first_string(part, ("text", "content", "reasoning_content"))
-        return [ReasoningDelta(text)] if text else _finish_for_part(part)
+        return [ReasoningDelta(text)] if text else []
 
     text = _first_string(part, ("text", "content", "answer"))
-    result: list[NormalizedEvent] = [TextDelta(text)] if text else []
-    if str(part.get("status", "")).lower() in {"finish", "finished", "done", "completed"}:
-        result.append(Finish())
-    return result or _finish_for_part(part)
-
-
-def _finish_for_part(part: dict[str, Any]) -> list[NormalizedEvent]:
-    status = str(part.get("status", "")).lower()
-    if status in {"finish", "finished", "done", "completed"}:
-        return [Finish()]
-    return []
+    # Part-level "finish" only marks that part as complete; it must not end the
+    # OpenAI stream. Terminal Finish comes from the top-level status or [DONE].
+    return [TextDelta(text)] if text else []
 
 
 def _as_dict(payload: object) -> dict[str, Any]:

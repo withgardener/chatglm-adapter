@@ -78,6 +78,17 @@ def test_truthy_tool_calls_without_parts_stays_a_tool_event():
     assert result[0].__class__.__name__ == "ToolEvent"
 
 
+def test_part_level_finish_does_not_end_the_stream():
+    # Live stream 2026-09-11: think part reaches status "finish" long before
+    # the answer completes; it must not emit an OpenAI finish_reason chunk.
+    raw = RawSSEEvent(
+        None,
+        '{"status":"processing",'
+        '"parts":[{"answer_type":"think","text":"想完了","status":"finish"}]}',
+    )
+    assert normalize(raw) == [ReasoningDelta("想完了")]
+
+
 def _texts(events):
     return [event.text for event in events if isinstance(event, TextDelta)]
 
