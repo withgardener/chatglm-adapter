@@ -10,6 +10,7 @@ from ..chatglm.request_builder import ChatGLMRequestBuilder
 from ..chatglm.sse_parser import normalize
 from ..core.errors import AdapterError, QueueTimeoutError, UnsupportedFeatureError
 from ..core.events import Error as UpstreamEventError
+from ..core.events import Unknown
 from ..openai.request_mapper import validate_request
 from ..openai.response_encoder import CompletionAccumulator, OpenAIEncoder
 from ..openai.schemas import ChatCompletionRequest
@@ -78,8 +79,14 @@ async def _stream_body(container, body, builder, request_id, lease) -> AsyncIter
         async with lease:
             async for raw in container.chatglm.stream(body, builder, request_id=request_id):
                 for event in normalize(raw):
-                    if event.__class__.__name__ == "Unknown":
-                        logger.warning("unknown upstream SSE event")
+                    if isinstance(event, Unknown):
+                        # Shapes contain only field names and type markers, no
+                        # payload values, so this stays within the log policy.
+                        logger.warning(
+                            "unknown upstream SSE event: event=%s shape=%s",
+                            event.event,
+                            event.payload_shape,
+                        )
                     chunk = encoder.event(event, accumulator)
                     if chunk:
                         yield chunk
