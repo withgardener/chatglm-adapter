@@ -88,8 +88,13 @@ class ChatGLMClient:
                         attempted_refresh = True
                         continue
                     if response.status_code == 429 and not state.started and attempts == 1:
-                        await asyncio.sleep(0.2)
-                        continue
+                        # Only retry when the upstream tells us how long to wait;
+                        # an instant retry just doubles pressure on a rate limit.
+                        retry_after = _retry_after_seconds(response.headers.get("retry-after"))
+                        if retry_after is not None:
+                            await response.aclose()
+                            await asyncio.sleep(retry_after)
+                            continue
                     if response.status_code >= 400:
                         excerpt = redact_text(
                             (await response.aread()).decode("utf-8", "replace")
@@ -120,6 +125,21 @@ class ChatGLMClient:
                 if conversation is not None:
                     await self._conversations.cleanup(conversation, base_headers)
         raise UpstreamError("ChatGLM stream retry budget exhausted")
+
+
+_MAX_RETRY_AFTER_SECONDS = 10.0
+
+
+def _retry_after_seconds(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        return None
+    if not 0 < seconds <= _MAX_RETRY_AFTER_SECONDS:
+        return None
+    return seconds
 
 
 def _conversation_id(event: RawSSEEvent) -> str | None:

@@ -75,41 +75,45 @@ class FileUploader:
         payload, file_name, media_type = decode_data_url(
             data_url, max_bytes=self._settings.upload_max_image_bytes
         )
-        token = await self._auth.get_access_token()
-        headers = build_headers(
-            self._settings,
-            self._signer,
-            access_token=token,
-            device_id=self._device_id,
-            accept="application/json",
-            cookie=self._auth.cookie_header(token),
-        )
-        # httpx must generate the multipart boundary itself.
-        del headers["Content-Type"]
-        try:
-            response = await self._client.post(
-                self._settings.chatglm_upload_url,
-                headers=headers,
-                files={"file": (file_name, payload, media_type)},
-                data={"from": "chat", "assistant_id": self._settings.chatglm_assistant_id},
-                timeout=self._settings.upstream_request_timeout_seconds,
+        for attempt in range(2):
+            token = await self._auth.get_access_token(force_refresh=attempt > 0)
+            headers = build_headers(
+                self._settings,
+                self._signer,
+                access_token=token,
+                device_id=self._device_id,
+                accept="application/json",
+                cookie=self._auth.cookie_header(token),
             )
-        except httpx.HTTPError as exc:
-            raise UpstreamError("ChatGLM image upload request failed", retryable=True) from exc
-        if response.status_code >= 400:
-            excerpt = redact_text(response.text)[:200]
-            raise UpstreamError(
-                f"ChatGLM image upload rejected ({response.status_code}): {excerpt}",
-                status_code=response.status_code,
-                retryable=response.status_code in {429, 500, 502, 503, 504},
-            )
-        try:
-            result = response.json()["result"]
-            return UploadedImage(
-                file_id=str(result["file_id"]),
-                image_url=str(result["file_url"]),
-                file_name=str(result.get("file_name") or file_name),
-                file_size=int(result.get("file_size") or len(payload)),
-            )
-        except (ValueError, KeyError, TypeError) as exc:
-            raise UpstreamError("ChatGLM image upload response was not understood") from exc
+            # httpx must generate the multipart boundary itself.
+            del headers["Content-Type"]
+            try:
+                response = await self._client.post(
+                    self._settings.chatglm_upload_url,
+                    headers=headers,
+                    files={"file": (file_name, payload, media_type)},
+                    data={"from": "chat", "assistant_id": self._settings.chatglm_assistant_id},
+                    timeout=self._settings.upstream_request_timeout_seconds,
+                )
+            except httpx.HTTPError as exc:
+                raise UpstreamError("ChatGLM image upload request failed", retryable=True) from exc
+            if response.status_code == 401 and attempt == 0:
+                continue
+            if response.status_code >= 400:
+                excerpt = redact_text(response.text)[:200]
+                raise UpstreamError(
+                    f"ChatGLM image upload rejected ({response.status_code}): {excerpt}",
+                    status_code=response.status_code,
+                    retryable=response.status_code in {429, 500, 502, 503, 504},
+                )
+            try:
+                result = response.json()["result"]
+                return UploadedImage(
+                    file_id=str(result["file_id"]),
+                    image_url=str(result["file_url"]),
+                    file_name=str(result.get("file_name") or file_name),
+                    file_size=int(result.get("file_size") or len(payload)),
+                )
+            except (ValueError, KeyError, TypeError) as exc:
+                raise UpstreamError("ChatGLM image upload response was not understood") from exc
+        raise UpstreamError("ChatGLM image upload retry budget exhausted", status_code=401)
