@@ -78,6 +78,34 @@ def test_truthy_tool_calls_without_parts_stays_a_tool_event():
     assert result[0].__class__.__name__ == "ToolEvent"
 
 
+def test_content_item_list_shape_20260911_har():
+    raw = RawSSEEvent(
+        None,
+        '{"status":"processing","conversation_id":"conv-1",'
+        '"parts":[{"id":"p1","role":"assistant","status":"processing",'
+        '"content":[{"type":"think","think":"用户在问","tool_calls":{}}]}],'
+        '"tool_calls":[],"last_error":{}}',
+    )
+    assert normalize(raw) == [ReasoningDelta("用户在问")]
+
+
+def test_content_item_text_and_tool_call_items():
+    text_frame = RawSSEEvent(
+        None,
+        '{"status":"processing","parts":[{"id":"p1","status":"processing",'
+        '"content":[{"type":"text","text":"图中"}]}]}',
+    )
+    assert normalize(text_frame) == [TextDelta("图中")]
+    tool_frame = RawSSEEvent(
+        None,
+        '{"status":"processing","parts":[{"id":"p1","status":"processing",'
+        '"content":[{"type":"tool_calls","tool_calls":{"name":"search","arguments":"{}"}}]}]}',
+    )
+    result = normalize(tool_frame)
+    assert len(result) == 1
+    assert result[0].__class__.__name__ == "ToolEvent"
+
+
 def test_part_level_finish_does_not_end_the_stream():
     # Live stream 2026-09-11: think part reaches status "finish" long before
     # the answer completes; it must not emit an OpenAI finish_reason chunk.

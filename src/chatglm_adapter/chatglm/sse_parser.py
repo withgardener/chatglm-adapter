@@ -175,6 +175,16 @@ def _normalize_part(part: object) -> list[NormalizedEvent]:
     if not isinstance(part, dict):
         return [Unknown(event=None, payload_shape=_shape(part))]
 
+    # Current shape (2026-09-11 HAR): part.content is a list of typed items,
+    # each carrying an incremental fragment.
+    content = part.get("content")
+    if isinstance(content, list):
+        result: list[NormalizedEvent] = []
+        for item in content:
+            result.extend(_normalize_content_item(item))
+        return result
+
+    # Legacy flat shape (2026-09-10 HAR): text lives on the part itself.
     answer_type = str(
         part.get("answer_type")
         or part.get("type")
@@ -192,6 +202,21 @@ def _normalize_part(part: object) -> list[NormalizedEvent]:
     # Part-level "finish" only marks that part as complete; it must not end the
     # OpenAI stream. Terminal Finish comes from the top-level status or [DONE].
     return [TextDelta(text)] if text else []
+
+
+def _normalize_content_item(item: object) -> list[NormalizedEvent]:
+    if not isinstance(item, dict):
+        return [Unknown(event=None, payload_shape=_shape(item))]
+    item_type = str(item.get("type", "")).lower()
+    if item_type == "think":
+        text = item.get("think")
+        return [ReasoningDelta(text)] if isinstance(text, str) and text else []
+    if item_type == "text" or (not item_type and isinstance(item.get("text"), str)):
+        text = item.get("text")
+        return [TextDelta(text)] if isinstance(text, str) and text else []
+    if item_type in {"tool_calls", "tool_result"}:
+        return [ToolEvent(payload=item)]
+    return [Unknown(event=None, payload_shape=_shape(item))]
 
 
 def _as_dict(payload: object) -> dict[str, Any]:
